@@ -1,0 +1,15 @@
+# IDE stuff
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual envs
+venv/
+.env/
+
+# SQLite DB & data files
+state_affairs.db
+data/
