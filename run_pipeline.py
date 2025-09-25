@@ -1,4 +1,4 @@
-from download import download_videos
+from download import download_concurrent
 from persistence import connect, init_db, upsert_videos, list_all
 from scrapers.house_scraper import fetch_videos
 
@@ -17,7 +17,7 @@ def main():
     print("Current rows in DB:")
     list_all(conn)
 
-    download_videos(conn)
+    download_concurrent(conn)
 
 if __name__ == "__main__":
     main()

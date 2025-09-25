@@ -4,7 +4,6 @@ from typing import List
 from models import Video
 
 DB_PATH = Path("state_affairs.db")
-
 SCHEMA = """
     CREATE TABLE IF NOT EXISTS videos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
