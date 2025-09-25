@@ -9,6 +9,7 @@ __pycache__/
 # Virtual envs
 venv/
 .env/
+.venv/
 
 # SQLite DB & data files
 state_affairs.db
