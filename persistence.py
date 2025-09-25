@@ -12,6 +12,7 @@ SCHEMA = """
         external_id TEXT NOT NULL,
         date TEXT NOT NULL,
         url TEXT NOT NULL,
+        download_path TEXT,
         status TEXT NOT NULL DEFAULT 'discovered',
         discovered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE (source, external_id)
@@ -47,9 +48,10 @@ def upsert_videos(conn: sqlite3.Connection, videos: List[Video]) -> int:
     return inserted
 
 def list_all(conn):
-    rows = conn.execute("SELECT * FROM videos").fetchall()
-    for row in rows:
-        print(dict(row))
+    rows = conn.execute("SELECT * FROM videos ORDER BY date DESC").fetchall()
+    print(len(rows))
+    # for row in rows:
+    #     print(dict(row))
 
 if __name__ == "__main__":
     connection = connect()
