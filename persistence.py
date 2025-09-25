@@ -90,14 +90,16 @@ def fetch_batch(conn, limit: int):
         (limit,),
     ).fetchall()
 
-def fetch_downloaded(conn):
+def fetch_downloaded(conn, limit: int):
     return conn.execute(
         """
-        SELECT source, external_id, download_path
-        FROM videos
-        WHERE status = 'downloaded'
-        """
-    )
+        SELECT source, external_id, download_path FROM videos
+        WHERE status = 'downloaded' AND download_path IS NOT NULL
+        ORDER BY date DESC
+        LIMIT ?
+        """,
+        (limit,)
+    ).fetchall()
 
 def fetch_all(conn):
     rows = conn.execute("SELECT * FROM videos ORDER BY date DESC").fetchall()

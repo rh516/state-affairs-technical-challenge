@@ -2,7 +2,8 @@ from typing import Tuple, List
 from faster_whisper import WhisperModel
 from pathlib import Path
 from tqdm import tqdm
-from faster_whisper.transcribe import Segment, TranscriptionInfo
+from faster_whisper.transcribe import Segment
+from persistence import fetch_downloaded, mark_failed, mark_transcribed
 
 DATA_DIR = Path("data")
 MODEL_NAME = "small"
@@ -15,27 +16,28 @@ MODEL = WhisperModel(
     compute_type=COMPUTE_TYPE,
 )
 
-def find_videos(root: Path) -> List[Path]:
-    return [p for p in root.glob("*/*/video.mp4") if p.is_file()]
-
-def transcribe_video(mp4_path: Path) -> Tuple[List[Segment], TranscriptionInfo]:
+def transcribe_video(video_path: str) -> List[Segment]:
     segments, info = MODEL.transcribe(
-        str(mp4_path),
+        video_path,
         language="en",
         beam_size=1,
         vad_filter=True,
         vad_parameters={"min_silence_duration_ms": 1000},
     )
+    all_segments: List[Segment] = []
     total = info.duration
-    pbar = tqdm(total=total, unit="sec", desc=f"Transcribing {mp4_path.name}")
 
-    all_segments = []
-    for seg in segments:
-        all_segments.append(seg)
-        pbar.update(seg.end - seg.start)
+    with tqdm(
+        total=total,
+        unit="sec",
+        desc=f"Transcribing {video_path}",
+        dynamic_ncols=True,
+    ) as pbar:
+        for seg in segments:
+            all_segments.append(seg)
+            pbar.update(seg.end - seg.start)
 
-    pbar.close()
-    return all_segments, info
+    return all_segments
 
 def _srt_timestamp(seconds: float) -> str:
     ms = int(round(seconds * 1000))
@@ -51,35 +53,47 @@ def write_srt(segments: List[Segment], source: str, external_id: str) -> Path:
 
     tmp = out_path.with_suffix(out_path.suffix + ".part")
 
+    idx = 1
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
-        for idx, seg in enumerate(segments, start=1):
-            start = _srt_timestamp(seg.start)
-            end = _srt_timestamp(seg.end)
+        for seg in segments:
             text = (seg.text or "").strip()
-
             if not text:
                 continue
 
+            start = _srt_timestamp(seg.start)
+            end = _srt_timestamp(seg.end)
             f.write(f"{idx}\n{start} --> {end}\n{text}\n\n")
+            idx += 1
 
     tmp.replace(out_path)
     return out_path
 
-def transcribe_all(root: Path) -> None:
-    pass
+def transcribe_videos(conn) -> Tuple[int, int]:
+    rows = fetch_downloaded(conn, limit=5)
+    if not rows:
+        print("No videos to transcribe.")
+        return 0, 0
 
-if __name__ == "__main__":
-    videos = find_videos(DATA_DIR)
-    print(videos)
-    print("Found {} videos".format(len(videos)))
+    print(f"Transcribing {len(rows)} videos…")
 
-    print(videos[1], videos[1].parent.name, videos[1].parent.parent.name)
+    successes = 0
+    failures = 0
 
-    # s, i = transcribe_video(videos[1])
-    # out = write_srt(
-    #     s,
-    #     videos[1].parent.parent.name,
-    #     videos[1].parent.name
-    # )
-    # print(out)
+    for row in rows:
+        video_path = row["download_path"]
+        source = row["source"]
+        external_id = row["external_id"]
 
+        try:
+            segments = transcribe_video(video_path)
+            srt_path = write_srt(segments, source, external_id)
+            mark_transcribed(conn, source, external_id, str(srt_path))
+            successes += 1
+            tqdm.write(f"✓ {source}/{external_id} → {srt_path}")
+
+        except Exception as e:
+            mark_failed(conn, source, external_id, str(e))
+            failures += 1
+            tqdm.write(f"✗ {source}/{external_id} failed: {e}")
+
+    return successes, failures

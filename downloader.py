@@ -1,7 +1,5 @@
 import requests
-from models import Video
 from pathlib import Path
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from persistence import fetch_batch, mark_failed, mark_downloaded
@@ -12,8 +10,8 @@ CHUNK_SIZE = 8 * 1024 * 1024
 MAX_WORKERS = 3
 BATCH_SIZE = 6
 
-def get_direct_mp4_url(video: Video) -> str:
-    return f"https://www.house.mi.gov/ArchiveVideoFiles/{video.external_id}.mp4"
+def get_direct_mp4_url(external_id: str) -> str:
+    return f"https://www.house.mi.gov/ArchiveVideoFiles/{external_id}.mp4"
 
 def download_to_local(video_url: str, source: str, external_id: str, position: int = 0) -> Path:
     dest = DATA_DIR / source / external_id / "video.mp4"
@@ -47,28 +45,27 @@ def download_to_local(video_url: str, source: str, external_id: str, position: i
     return dest
 
 def download_one(row, position: int = 0):
-    video = Video(
-        source=row["source"],
-        external_id=row["external_id"],
-        url=row["url"],
-        date=datetime.fromisoformat(row["date"]).date()
-    )
-    mp4_url = get_direct_mp4_url(video)
+    source = row["source"]
+    external_id = row["external_id"]
+    mp4_url = get_direct_mp4_url(external_id)
 
     try:
-        dest = download_to_local(mp4_url, video.source, video.external_id, position)
-        return video.source, video.external_id, dest
+        dest = download_to_local(mp4_url, source, external_id, position)
+        return source, external_id, dest
 
     except Exception as e:
-        return video.source, video.external_id, e
+        return source, external_id, e
 
-def download_concurrent(conn):
+def download_concurrent(conn) -> tuple[int, int]:
     rows = fetch_batch(conn, BATCH_SIZE)
     if not rows:
         print("No videos to download.")
-        return
+        return 0, 0
 
     print(f"Downloading {len(rows)} videos…")
+
+    successes = 0
+    failures = 0
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         futures = [executor.submit(download_one, row, pos) for pos, row in enumerate(rows)]
@@ -78,11 +75,11 @@ def download_concurrent(conn):
 
             if isinstance(result, Exception):
                 mark_failed(conn, source, external_id, str(result))
+                failures += 1
                 tqdm.write(f"✗ {external_id} failed: {result}")
             else:
                 mark_downloaded(conn, source, external_id, str(result))
+                successes += 1
                 tqdm.write(f"✓ {external_id} → {result} \n")
 
-if __name__ == "__main__":
-    print("Downloading...")
-
+    return successes, failures
