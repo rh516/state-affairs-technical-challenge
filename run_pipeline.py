@@ -1,6 +1,6 @@
 from downloader import download_concurrent, download_one
 from persistence import connect, init_db, upsert_videos, fetch_all
-from scrapers.house_scraper import fetch_videos
+from scrapers.house_scraper import fetch_videos as fetch_house_videos
 from transcriber import transcribe_videos
 
 def main():
@@ -8,7 +8,7 @@ def main():
     init_db(conn)
 
     # House
-    house_videos = fetch_videos(lookback_days=14)
+    house_videos = fetch_house_videos(lookback_days=14)
     new_house_vids = upsert_videos(conn, house_videos)
     print(f"House: {new_house_vids} new videos")
 

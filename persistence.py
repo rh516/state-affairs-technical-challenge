@@ -9,6 +9,7 @@ SCHEMA = """
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source TEXT NOT NULL,
         external_id TEXT NOT NULL,
+        title TEXT NOT NULL,
         date TEXT NOT NULL,
         url TEXT NOT NULL,
         download_path TEXT,
@@ -36,11 +37,11 @@ def upsert_videos(conn: sqlite3.Connection, videos: List[Video]) -> int:
     for v in videos:
         cursor.execute(
             """
-            INSERT INTO videos (source, external_id, date, url)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO videos (source, external_id, title, date, url)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (source, external_id) DO NOTHING
             """,
-            (v.source, v.external_id, v.date.isoformat(), v.url),
+            (v.source, v.external_id, v.title, v.date.isoformat(), v.url),
         )
         if cursor.rowcount == 1:
             inserted += 1
@@ -81,7 +82,7 @@ def mark_transcribed(conn, source: str, external_id: str, transcript_path: str):
 def fetch_batch(conn, limit: int):
     return conn.execute(
         """
-        SELECT source, external_id, url, date
+        SELECT source, external_id, title, url, date
         FROM videos
         WHERE status IN ('discovered', 'failed')
         ORDER BY date DESC
@@ -93,7 +94,7 @@ def fetch_batch(conn, limit: int):
 def fetch_downloaded(conn, limit: int):
     return conn.execute(
         """
-        SELECT source, external_id, download_path FROM videos
+        SELECT source, external_id, title, download_path FROM videos
         WHERE status = 'downloaded' AND download_path IS NOT NULL
         ORDER BY date DESC
         LIMIT ?

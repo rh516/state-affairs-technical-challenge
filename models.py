@@ -5,5 +5,6 @@ from datetime import date
 class Video:
     source: str
     external_id: str
+    title: str
     date: date
     url: str

@@ -33,6 +33,7 @@ def fetch_videos(lookback_days: int = 30) -> List[Video]:
         videos.append(Video(
             source="house",
             external_id=external_id,
+            title=external_id,
             date=d,
             url=video_url,
         ))
@@ -41,7 +42,7 @@ def fetch_videos(lookback_days: int = 30) -> List[Video]:
     return [vid for vid in videos if vid.date >= cutoff]
 
 if __name__ == "__main__":
-    vids = fetch_videos(lookback_days=7)
+    vids = fetch_videos(lookback_days=3)
     print(f"Found {len(vids)} recent House videos")
     for v in vids:
-        print(v.date, v.external_id, v.url)
+        print(v.date, v.external_id, v.title, v.url)

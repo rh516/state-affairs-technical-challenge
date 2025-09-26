@@ -46,8 +46,8 @@ def _srt_timestamp(seconds: float) -> str:
     ss, ms = divmod(rem, 1000)
     return f"{hh:02d}:{mm:02d}:{ss:02d},{ms:03d}"
 
-def write_srt(segments: List[Segment], source: str, external_id: str) -> Path:
-    out_dir = DATA_DIR / source / external_id
+def write_srt(segments: List[Segment], source: str, title: str) -> Path:
+    out_dir = DATA_DIR / source / title
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "transcript.srt"
 
@@ -83,17 +83,18 @@ def transcribe_videos(conn) -> Tuple[int, int]:
         video_path = row["download_path"]
         source = row["source"]
         external_id = row["external_id"]
+        title = row["title"]
 
         try:
             segments = transcribe_video(video_path)
-            srt_path = write_srt(segments, source, external_id)
+            srt_path = write_srt(segments, source, title)
             mark_transcribed(conn, source, external_id, str(srt_path))
             successes += 1
-            tqdm.write(f"✓ {source}/{external_id} → {srt_path}")
+            tqdm.write(f"✓ {source}/{title} → {srt_path}")
 
         except Exception as e:
             mark_failed(conn, source, external_id, str(e))
             failures += 1
-            tqdm.write(f"✗ {source}/{external_id} failed: {e}")
+            tqdm.write(f"✗ {source}/{title} failed: {e}")
 
     return successes, failures
