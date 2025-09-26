@@ -2,7 +2,7 @@ import requests
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
-from persistence import fetch_batch, mark_failed, mark_downloaded
+from persistence import fetch_batch, mark_failed, mark_downloaded, connect, init_db
 
 DATA_DIR = Path("./data")
 CHUNK_SIZE = 8 * 1024 * 1024
@@ -10,8 +10,11 @@ CHUNK_SIZE = 8 * 1024 * 1024
 MAX_WORKERS = 3
 BATCH_SIZE = 6
 
-def get_direct_mp4_url(external_id: str) -> str:
-    return f"https://www.house.mi.gov/ArchiveVideoFiles/{external_id}.mp4"
+def get_direct_mp4_url(source: str, external_id: str) -> str:
+    if source == "house":
+        return f"https://www.house.mi.gov/ArchiveVideoFiles/{external_id}.mp4"
+    else:
+        return f"https://dlttx48mxf9m3.cloudfront.net/outputs/{external_id}/Default/MP4/out_1080.mp4"
 
 def download_to_local(video_url: str, source: str, title: str, position: int = 0) -> Path:
     dest = DATA_DIR / source / title / "video.mp4"
@@ -48,7 +51,7 @@ def download_one(row, position: int = 0):
     source = row["source"]
     external_id = row["external_id"]
     title = row["title"]
-    mp4_url = get_direct_mp4_url(external_id)
+    mp4_url = get_direct_mp4_url(source, external_id)
 
     try:
         dest = download_to_local(mp4_url, source, title, position)
@@ -84,3 +87,12 @@ def download_concurrent(conn) -> tuple[int, int]:
                 tqdm.write(f"✓ {source}/{title} → {result} \n")
 
     return successes, failures
+
+if __name__ == "__main__":
+    connection = connect()
+    init_db(connection)
+
+    vids_to_download = fetch_batch(connection, BATCH_SIZE)
+
+    for row in vids_to_download:
+        print(row["title"], get_direct_mp4_url(row["source"], row["external_id"]))

@@ -8,7 +8,7 @@ from models import Video
 HOUSE_ARCHIVE = "https://house.mi.gov/VideoArchive"
 UA = "StateAffairsIngest/1.0 (+rrhuang99@gmail.com)"
 
-def fetch_videos(lookback_days: int = 30) -> List[Video]:
+def fetch_house_videos(lookback_days: int) -> List[Video]:
     response = requests.get(HOUSE_ARCHIVE, headers={"User-Agent": UA}, verify=False)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
@@ -42,7 +42,7 @@ def fetch_videos(lookback_days: int = 30) -> List[Video]:
     return [vid for vid in videos if vid.date >= cutoff]
 
 if __name__ == "__main__":
-    vids = fetch_videos(lookback_days=3)
+    vids = fetch_house_videos(lookback_days=3)
     print(f"Found {len(vids)} recent House videos")
     for v in vids:
         print(v.date, v.external_id, v.title, v.url)

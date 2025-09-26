@@ -102,12 +102,6 @@ def fetch_downloaded(conn, limit: int):
         (limit,)
     ).fetchall()
 
-def fetch_all(conn):
-    rows = conn.execute("SELECT * FROM videos ORDER BY date DESC").fetchall()
-    # for row in rows:
-    #     print(dict(row))
-    return len(rows)
-
 if __name__ == "__main__":
     connection = connect()
     init_db(connection)

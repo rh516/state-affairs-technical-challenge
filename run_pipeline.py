@@ -1,6 +1,7 @@
-from downloader import download_concurrent, download_one
-from persistence import connect, init_db, upsert_videos, fetch_all
-from scrapers.house_scraper import fetch_videos as fetch_house_videos
+from downloader import download_concurrent
+from persistence import connect, init_db, upsert_videos
+from scrapers.house_scraper import fetch_house_videos
+from scrapers.senate_scraper import fetch_senate_videos
 from transcriber import transcribe_videos
 
 def main():
@@ -8,14 +9,13 @@ def main():
     init_db(conn)
 
     # House
-    house_videos = fetch_house_videos(lookback_days=14)
+    house_videos = fetch_house_videos(lookback_days=3)
     new_house_vids = upsert_videos(conn, house_videos)
     print(f"House: {new_house_vids} new videos")
 
-    # conn.execute("DELETE FROM videos;")  # removes all rows
-    # conn.commit()
-
-    # print("Current rows in DB:", fetch_all(conn))
+    senate_videos = fetch_senate_videos(lookback_days=7)
+    new_senate_vids = upsert_videos(conn, senate_videos)
+    print(f"Senate: {new_senate_vids} new videos")
 
     download_successes, download_failures = download_concurrent(conn)
     if download_successes or download_failures:
