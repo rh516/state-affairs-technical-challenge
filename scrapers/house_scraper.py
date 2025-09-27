@@ -8,6 +8,7 @@ from models import Video
 HOUSE_ARCHIVE = "https://house.mi.gov/VideoArchive"
 UA = "StateAffairsIngest/1.0 (+rrhuang99@gmail.com)"
 
+
 def fetch_house_videos(lookback_days: int) -> List[Video]:
     response = requests.get(HOUSE_ARCHIVE, headers={"User-Agent": UA}, verify=False)
     response.raise_for_status()
@@ -40,6 +41,7 @@ def fetch_house_videos(lookback_days: int) -> List[Video]:
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).date()
     return [vid for vid in videos if vid.date >= cutoff]
+
 
 if __name__ == "__main__":
     vids = fetch_house_videos(lookback_days=3)

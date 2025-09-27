@@ -1,4 +1,5 @@
 import sqlite3
+from sqlite3 import Connection, Row
 from pathlib import Path
 from typing import List
 from models import Video
@@ -21,16 +22,19 @@ SCHEMA = """
     )
 """
 
-def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
+
+def connect(db_path: Path = DB_PATH) -> Connection:
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db(conn: sqlite3.Connection) -> None:
+
+def init_db(conn: Connection) -> None:
     conn.executescript(SCHEMA)
     conn.commit()
 
-def upsert_videos(conn: sqlite3.Connection, videos: List[Video]) -> int:
+
+def upsert_videos(conn: Connection, videos: List[Video]) -> int:
     inserted = 0
     cursor = conn.cursor()
 
@@ -41,7 +45,7 @@ def upsert_videos(conn: sqlite3.Connection, videos: List[Video]) -> int:
             VALUES (?, ?, ?, ?, ?)
             ON CONFLICT (source, external_id) DO NOTHING
             """,
-            (v.source, v.external_id, v.title, v.date.isoformat(), v.url),
+            [v.source, v.external_id, v.title, v.date, v.url],
         )
         if cursor.rowcount == 1:
             inserted += 1
@@ -49,37 +53,41 @@ def upsert_videos(conn: sqlite3.Connection, videos: List[Video]) -> int:
     conn.commit()
     return inserted
 
-def mark_downloaded(conn, source: str, external_id: str, download_path: str):
+
+def mark_downloaded(conn: Connection, source: str, external_id: str, download_path: str) -> None:
     conn.execute(
         """
         UPDATE videos SET status = 'downloaded', download_path = ? 
         WHERE external_id = ? AND source = ?
         """,
-        (download_path, external_id, source),
+        [download_path, external_id, source],
     )
     conn.commit()
 
-def mark_failed(conn, source: str, external_id: str, error: str):
+
+def mark_failed(conn: Connection, source: str, external_id: str, error: str) -> None:
     conn.execute(
         """
         UPDATE videos SET status = 'failed', error = ?
         WHERE external_id = ? AND source = ?
         """,
-        (error, external_id, source),
+        [error, external_id, source],
     )
     conn.commit()
 
-def mark_transcribed(conn, source: str, external_id: str, transcript_path: str):
+
+def mark_transcribed(conn: Connection, source: str, external_id: str, transcript_path: str) -> None:
     conn.execute(
         """
         UPDATE videos SET status = 'transcribed', transcript_path = ?
         WHERE external_id = ? AND source = ?
         """,
-        (transcript_path, external_id, source)
+        [transcript_path, external_id, source],
     )
     conn.commit()
 
-def fetch_batch(conn, limit: int):
+
+def fetch_batch(conn: Connection, limit: int) -> List[Row]:
     return conn.execute(
         """
         SELECT source, external_id, title, url, date
@@ -88,10 +96,11 @@ def fetch_batch(conn, limit: int):
         ORDER BY date DESC
         LIMIT ?
         """,
-        (limit,),
+        [limit],
     ).fetchall()
 
-def fetch_downloaded(conn, limit: int):
+
+def fetch_downloaded(conn: Connection, limit: int) -> List[Row]:
     return conn.execute(
         """
         SELECT source, external_id, title, download_path FROM videos
@@ -99,11 +108,11 @@ def fetch_downloaded(conn, limit: int):
         ORDER BY date DESC
         LIMIT ?
         """,
-        (limit,)
+        [limit],
     ).fetchall()
+
 
 if __name__ == "__main__":
     connection = connect()
     init_db(connection)
     print("DB ready")
-

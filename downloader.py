@@ -3,18 +3,21 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 from persistence import fetch_batch, mark_failed, mark_downloaded, connect, init_db
+from sqlite3 import Connection, Row
+from typing import Tuple, Union
 
 DATA_DIR = Path("./data")
 CHUNK_SIZE = 8 * 1024 * 1024
-
 MAX_WORKERS = 3
 BATCH_SIZE = 6
+
 
 def get_direct_mp4_url(source: str, external_id: str) -> str:
     if source == "house":
         return f"https://www.house.mi.gov/ArchiveVideoFiles/{external_id}.mp4"
     else:
         return f"https://dlttx48mxf9m3.cloudfront.net/outputs/{external_id}/Default/MP4/out_1080.mp4"
+
 
 def download_to_local(video_url: str, source: str, title: str, position: int = 0) -> Path:
     dest = DATA_DIR / source / title / "video.mp4"
@@ -28,14 +31,14 @@ def download_to_local(video_url: str, source: str, title: str, position: int = 0
         desc = f"{source}/{title}"
 
         with tqdm(
-            total=total_size or None,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-            desc=desc,
-            position=position,
-            leave=True,
-            dynamic_ncols=True,
+                total=total_size or None,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+                desc=desc,
+                position=position,
+                leave=True,
+                dynamic_ncols=True,
         ) as pbar:
             with open(tmp, "wb") as f:
                 for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
@@ -47,7 +50,8 @@ def download_to_local(video_url: str, source: str, title: str, position: int = 0
     tmp.replace(dest)
     return dest
 
-def download_one(row, position: int = 0):
+
+def download_one(row: Row, position: int = 0) -> Tuple[str, str, str, Union[Path, Exception]]:
     source = row["source"]
     external_id = row["external_id"]
     title = row["title"]
@@ -60,7 +64,8 @@ def download_one(row, position: int = 0):
     except Exception as e:
         return source, external_id, title, e
 
-def download_concurrent(conn) -> tuple[int, int]:
+
+def download_concurrent(conn: Connection) -> tuple[int, int]:
     rows = fetch_batch(conn, BATCH_SIZE)
     if not rows:
         print("No videos to download.")
@@ -88,11 +93,12 @@ def download_concurrent(conn) -> tuple[int, int]:
 
     return successes, failures
 
+
 if __name__ == "__main__":
     connection = connect()
     init_db(connection)
 
     vids_to_download = fetch_batch(connection, BATCH_SIZE)
 
-    for row in vids_to_download:
-        print(row["title"], get_direct_mp4_url(row["source"], row["external_id"]))
+    for r in vids_to_download:
+        print(r["title"], get_direct_mp4_url(r["source"], r["external_id"]))

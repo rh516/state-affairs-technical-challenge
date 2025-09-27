@@ -4,11 +4,11 @@ from scrapers.house_scraper import fetch_house_videos
 from scrapers.senate_scraper import fetch_senate_videos
 from transcriber import transcribe_videos
 
+
 def main():
     conn = connect()
     init_db(conn)
 
-    # House
     house_videos = fetch_house_videos(lookback_days=3)
     new_house_vids = upsert_videos(conn, house_videos)
     print(f"House: {new_house_vids} new videos")
@@ -24,6 +24,7 @@ def main():
     transcribe_successes, transcribe_failures = transcribe_videos(conn)
     if transcribe_successes or transcribe_failures:
         print(f"Transcribed {transcribe_successes} videos with {transcribe_failures} failures")
+
 
 if __name__ == "__main__":
     main()

@@ -8,8 +8,10 @@ HEADERS = {
     "User-Agent": "StateAffairsIngest/1.0 (+rrhuang99@gmail.com)"
 }
 
+
 def get_video_player_url(external_id: str) -> str:
     return f"https://cloud.castus.tv/vod/misenate/video/{external_id}?page=HOME"
+
 
 def fetch_senate_videos(lookback_days: int) -> List[Video]:
     response = requests.get(SENATE_URL, headers=HEADERS, timeout=30)
@@ -33,6 +35,7 @@ def fetch_senate_videos(lookback_days: int) -> List[Video]:
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).date()
     return [vid for vid in videos if vid.date >= cutoff]
+
 
 if __name__ == "__main__":
     senate_videos = fetch_senate_videos(lookback_days=7)

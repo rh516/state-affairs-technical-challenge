@@ -1,9 +1,10 @@
-from typing import Tuple, List
-from faster_whisper import WhisperModel
 from pathlib import Path
 from tqdm import tqdm
-from faster_whisper.transcribe import Segment
 from persistence import fetch_downloaded, mark_failed, mark_transcribed
+from typing import Tuple, List
+from sqlite3 import Connection
+from faster_whisper import WhisperModel
+from faster_whisper.transcribe import Segment
 
 DATA_DIR = Path("data")
 MODEL_NAME = "small"
@@ -15,6 +16,7 @@ MODEL = WhisperModel(
     device=DEVICE,
     compute_type=COMPUTE_TYPE,
 )
+
 
 def transcribe_video(video_path: str) -> List[Segment]:
     segments, info = MODEL.transcribe(
@@ -28,10 +30,10 @@ def transcribe_video(video_path: str) -> List[Segment]:
     total = info.duration
 
     with tqdm(
-        total=total,
-        unit="sec",
-        desc=f"Transcribing {video_path}",
-        dynamic_ncols=True,
+            total=total,
+            unit="sec",
+            desc=f"Transcribing {video_path}",
+            dynamic_ncols=True,
     ) as pbar:
         for seg in segments:
             all_segments.append(seg)
@@ -39,12 +41,14 @@ def transcribe_video(video_path: str) -> List[Segment]:
 
     return all_segments
 
+
 def _srt_timestamp(seconds: float) -> str:
     ms = int(round(seconds * 1000))
     hh, rem = divmod(ms, 3_600_000)
     mm, rem = divmod(rem, 60_000)
     ss, ms = divmod(rem, 1000)
     return f"{hh:02d}:{mm:02d}:{ss:02d},{ms:03d}"
+
 
 def write_srt(segments: List[Segment], source: str, title: str) -> Path:
     out_dir = DATA_DIR / source / title
@@ -68,7 +72,8 @@ def write_srt(segments: List[Segment], source: str, title: str) -> Path:
     tmp.replace(out_path)
     return out_path
 
-def transcribe_videos(conn) -> Tuple[int, int]:
+
+def transcribe_videos(conn: Connection) -> Tuple[int, int]:
     rows = fetch_downloaded(conn, limit=5)
     if not rows:
         print("No videos to transcribe.")
