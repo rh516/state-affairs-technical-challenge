@@ -8,6 +8,7 @@ from models import Video
 HOUSE_ARCHIVE = "https://house.mi.gov/VideoArchive"
 UA = "StateAffairsIngest/1.0 (+rrhuang99@gmail.com)"
 
+
 def _parse_date_from_text(text: str) -> Optional[date]:
     m = re.match(r"^[A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2},\s+\d{4}", text)
     if not m:
@@ -16,6 +17,7 @@ def _parse_date_from_text(text: str) -> Optional[date]:
         return datetime.strptime(m.group(0), "%A, %B %d, %Y").date()
     except ValueError:
         return None
+
 
 def fetch_house_videos(lookback_days: int) -> List[Video]:
     response = requests.get(HOUSE_ARCHIVE, headers={"User-Agent": UA}, timeout=30, verify=False)

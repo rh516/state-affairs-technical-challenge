@@ -31,6 +31,7 @@ def connect(db_path: Path = DB_PATH) -> Connection:
 
 def init_db(conn: Connection) -> None:
     conn.executescript(SCHEMA)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_videos_status ON videos(status)")
     conn.commit()
 
 
