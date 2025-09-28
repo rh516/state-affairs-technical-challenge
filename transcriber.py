@@ -1,6 +1,6 @@
 from pathlib import Path
 from tqdm import tqdm
-from persistence import fetch_downloaded, mark_failed, mark_transcribed
+from persistence import fetch_videos_to_transcribe, mark_failed, mark_transcribed
 from typing import Tuple, List
 from sqlite3 import Connection
 from faster_whisper import WhisperModel
@@ -10,7 +10,7 @@ DATA_DIR = Path("data")
 MODEL_NAME = "small"
 DEVICE = "auto"
 COMPUTE_TYPE = "auto"
-BATCH_SIZE = 6
+BATCH_SIZE = 3
 
 MODEL = WhisperModel(
     model_size_or_path=MODEL_NAME,
@@ -62,24 +62,29 @@ def write_srt(segments: List[Segment], source: str, title: str) -> Path:
 
     tmp = out_path.with_suffix(out_path.suffix + ".part")
 
-    idx = 1
-    with tmp.open("w", encoding="utf-8", newline="\n") as f:
-        for seg in segments:
-            text = (seg.text or "").strip()
-            if not text:
-                continue
+    try:
+        idx = 1
+        with tmp.open("w", encoding="utf-8", newline="\n") as f:
+            for seg in segments:
+                text = (seg.text or "").strip()
+                if not text:
+                    continue
 
-            start = _srt_timestamp(seg.start)
-            end = _srt_timestamp(seg.end)
-            f.write(f"{idx}\n{start} --> {end}\n{text}\n\n")
-            idx += 1
+                start = _srt_timestamp(seg.start)
+                end = _srt_timestamp(seg.end)
+                f.write(f"{idx}\n{start} --> {end}\n{text}\n\n")
+                idx += 1
 
-    tmp.replace(out_path)
-    return out_path
+        tmp.replace(out_path)
+        return out_path
+
+    except Exception:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def transcribe_videos(conn: Connection) -> Tuple[int, int]:
-    rows = fetch_downloaded(conn, limit=BATCH_SIZE)
+    rows = fetch_videos_to_transcribe(conn, limit=BATCH_SIZE)
     if not rows:
         print("No videos to transcribe.")
         return 0, 0
@@ -103,7 +108,7 @@ def transcribe_videos(conn: Connection) -> Tuple[int, int]:
             tqdm.write(f"✓ {source}/{title} → {srt_path}")
 
         except Exception as e:
-            mark_failed(conn, source, external_id, str(e))
+            mark_failed(conn, source, external_id, str(e), "failed_transcribe")
             failures += 1
             tqdm.write(f"✗ {source}/{title} failed: {e}")
 

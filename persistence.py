@@ -58,7 +58,7 @@ def upsert_videos(conn: Connection, videos: List[Video]) -> int:
 def mark_downloaded(conn: Connection, source: str, external_id: str, download_path: str) -> None:
     conn.execute(
         """
-        UPDATE videos SET status = 'downloaded', download_path = ? 
+        UPDATE videos SET status = 'downloaded', download_path = ?, error = NULL
         WHERE external_id = ? AND source = ?
         """,
         [download_path, external_id, source],
@@ -66,13 +66,13 @@ def mark_downloaded(conn: Connection, source: str, external_id: str, download_pa
     conn.commit()
 
 
-def mark_failed(conn: Connection, source: str, external_id: str, error: str) -> None:
+def mark_failed(conn: Connection, source: str, external_id: str, error: str, status: str) -> None:
     conn.execute(
         """
-        UPDATE videos SET status = 'failed', error = ?
+        UPDATE videos SET status = ?, error = ?
         WHERE external_id = ? AND source = ?
         """,
-        [error, external_id, source],
+        [status, error, external_id, source],
     )
     conn.commit()
 
@@ -80,7 +80,7 @@ def mark_failed(conn: Connection, source: str, external_id: str, error: str) -> 
 def mark_transcribed(conn: Connection, source: str, external_id: str, transcript_path: str) -> None:
     conn.execute(
         """
-        UPDATE videos SET status = 'transcribed', transcript_path = ?
+        UPDATE videos SET status = 'transcribed', transcript_path = ?, error = NULL
         WHERE external_id = ? AND source = ?
         """,
         [transcript_path, external_id, source],
@@ -88,12 +88,12 @@ def mark_transcribed(conn: Connection, source: str, external_id: str, transcript
     conn.commit()
 
 
-def fetch_batch(conn: Connection, limit: int) -> List[Row]:
+def fetch_videos_to_download(conn: Connection, limit: int) -> List[Row]:
     return conn.execute(
         """
         SELECT source, external_id, title, url, date
         FROM videos
-        WHERE status IN ('discovered', 'failed')
+        WHERE status IN ('discovered', 'failed_download')
         ORDER BY date DESC
         LIMIT ?
         """,
@@ -101,11 +101,11 @@ def fetch_batch(conn: Connection, limit: int) -> List[Row]:
     ).fetchall()
 
 
-def fetch_downloaded(conn: Connection, limit: int) -> List[Row]:
+def fetch_videos_to_transcribe(conn: Connection, limit: int) -> List[Row]:
     return conn.execute(
         """
         SELECT source, external_id, title, download_path FROM videos
-        WHERE status = 'downloaded' AND download_path IS NOT NULL
+        WHERE (status = 'downloaded' AND download_path IS NOT NULL) OR status = 'failed_transcribe'
         ORDER BY date DESC
         LIMIT ?
         """,
