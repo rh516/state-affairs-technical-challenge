@@ -9,7 +9,7 @@ def main():
     conn = connect()
     init_db(conn)
 
-    house_videos = fetch_house_videos(lookback_days=3)
+    house_videos = fetch_house_videos(lookback_days=7)
     new_house_vids = upsert_videos(conn, house_videos)
     print(f"House: {new_house_vids} new videos")
 

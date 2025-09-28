@@ -10,6 +10,7 @@ DATA_DIR = Path("data")
 MODEL_NAME = "small"
 DEVICE = "auto"
 COMPUTE_TYPE = "auto"
+BATCH_SIZE = 6
 
 MODEL = WhisperModel(
     model_size_or_path=MODEL_NAME,
@@ -74,7 +75,7 @@ def write_srt(segments: List[Segment], source: str, title: str) -> Path:
 
 
 def transcribe_videos(conn: Connection) -> Tuple[int, int]:
-    rows = fetch_downloaded(conn, limit=5)
+    rows = fetch_downloaded(conn, limit=BATCH_SIZE)
     if not rows:
         print("No videos to transcribe.")
         return 0, 0
