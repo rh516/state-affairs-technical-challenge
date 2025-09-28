@@ -20,6 +20,10 @@ MODEL = WhisperModel(
 
 
 def transcribe_video(video_path: str) -> List[Segment]:
+    p = Path(video_path)
+    if not p.exists() or p.stat().st_size == 0:
+        raise FileNotFoundError(f"Missing or empty file: {p}")
+
     segments, info = MODEL.transcribe(
         video_path,
         language="en",

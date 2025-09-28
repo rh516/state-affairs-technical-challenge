@@ -77,7 +77,10 @@ def download_concurrent(conn: Connection) -> tuple[int, int]:
     failures = 0
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(download_one, row, pos) for pos, row in enumerate(rows)]
+        futures = [
+            executor.submit(download_one, row, pos % MAX_WORKERS)
+            for pos, row in enumerate(rows)
+        ]
 
         for future in as_completed(futures):
             source, external_id, title, result = future.result()
@@ -89,7 +92,7 @@ def download_concurrent(conn: Connection) -> tuple[int, int]:
             else:
                 mark_downloaded(conn, source, external_id, str(result))
                 successes += 1
-                tqdm.write(f"✓ {source}/{title} → {result} \n")
+                tqdm.write(f"✓ {source}/{title} → {result}")
 
     return successes, failures
 
