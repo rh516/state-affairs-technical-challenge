@@ -111,9 +111,3 @@ def fetch_videos_to_transcribe(conn: Connection, limit: int) -> List[Row]:
         """,
         [limit],
     ).fetchall()
-
-
-if __name__ == "__main__":
-    connection = connect()
-    init_db(connection)
-    print("DB ready")

@@ -105,13 +105,3 @@ def download_concurrent(conn: Connection) -> tuple[int, int]:
                 tqdm.write(f"✓ {source}/{title} → {result}")
 
     return successes, failures
-
-
-if __name__ == "__main__":
-    connection = connect()
-    init_db(connection)
-
-    vids_to_download = fetch_videos_to_download(connection, BATCH_SIZE)
-
-    for r in vids_to_download:
-        print(r["title"], get_direct_mp4_url(r["source"], r["external_id"]))
